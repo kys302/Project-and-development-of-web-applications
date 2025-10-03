@@ -258,3 +258,30 @@ footer {
   background-size: 400% 400%;
   animation: gradient 10s ease infinite;
 }
+
+
+
+
+.button-group {
+  display: flex;
+  flex-direction: column; 
+  gap: 15px; 
+}
+
+.button-group button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #a8d5ba;
+  color: #1b1b2a;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+
+.button-group button:hover {
+  background: #fffffe;
+  transform: translateY(-2px);
+}
