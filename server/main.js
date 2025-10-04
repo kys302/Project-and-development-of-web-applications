@@ -15,12 +15,12 @@ if (document.querySelector('.form-container')) {
   const switchModeBtn = document.querySelector('#switchMode');
   let isLoginMode = true;
 
-    switchModeBtn.addEventListener('click', () => {
-        isLoginMode = !isLoginMode;
-        nameInput.parentElement.style.display = isLoginMode ? 'none' : 'block';
-        form.querySelector('button').textContent = isLoginMode ? 'Войти' : 'Зарегистрироваться';
-        switchModeBtn.textContent = isLoginMode ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Войти';
-    });
+  switchModeBtn.addEventListener('click', () => {
+    isLoginMode = !isLoginMode;
+    nameInput.parentElement.style.display = isLoginMode ? 'none' : 'block';
+    form.querySelector('button').textContent = isLoginMode ? 'Войти' : 'Зарегистрироваться';
+    switchModeBtn.textContent = isLoginMode ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Войти';
+  });
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
