@@ -1,4 +1,4 @@
-const users = [
+/* const users = [
   { id: 1, login: 'admin', password: '123456', name: 'Админ' },
   { id: 2, login: 'user', password: 'password', name: 'Пользователь' }
 ];
@@ -63,4 +63,5 @@ const products = [
   }
 ];
 
-export { users, products };
+export { users, products }; */
+
