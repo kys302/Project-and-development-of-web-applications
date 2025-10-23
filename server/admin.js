@@ -1,23 +1,75 @@
 const currentUser = JSON.parse(localStorage.getItem('currentUser'));
 if (!currentUser || currentUser.role !== 'admin') {
   alert('Доступ запрещён!');
-  window.location.href = '../client/index.html';
+  window.location.href = 'index.html';
 }
 
-function getProducts() {
-  return JSON.parse(localStorage.getItem('products')) || [];
+class SupabaseUploader {
+    constructor() {
+        this.supabaseUrl = 'https://iczsblxnxztvzdvfrgul.supabase.co';
+        this.supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljenNibHhueHp0dnpkdmZyZ3VsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTQ5NjU5OCwiZXhwIjoyMDc1MDcyNTk4fQ.x8CUCDDqh7cdq8tm55Hc4KU71zl92oQVG0T5MFhFlaU';
+        this.bucketName = 'masajii';
+        this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseKey);
+    }
+
+    generateFileName(file) {
+        const timestamp = Date.now();
+        const randomString = Math.random().toString(36).substring(2, 15);
+        const extension = file.name.split('.').pop();
+        return `service_${timestamp}_${randomString}.${extension}`;
+    }
+
+    async uploadFile(file) {
+        try {
+            const fileName = this.generateFileName(file);
+            
+            const { data, error } = await this.supabase.storage
+                .from(this.bucketName)
+                .upload(fileName, file);
+
+            if (error) {
+                throw new Error(`Ошибка загрузки: ${error.message}`);
+            }
+
+            const { data: publicUrlData } = this.supabase.storage
+                .from(this.bucketName)
+                .getPublicUrl(fileName);
+
+            return {
+                success: true,
+                url: publicUrlData.publicUrl,
+                fileName: fileName
+            };
+            
+        } catch (error) {
+            console.error('Ошибка загрузки на Supabase:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
 }
 
-function saveProducts(products) {
-  localStorage.setItem('products', JSON.stringify(products));
+const uploader = new SupabaseUploader();
+
+async function getProducts() {
+    try {
+        const response = await fetch('/api/products');
+        if (!response.ok) return [];
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка:', error);
+        return [];
+    }
 }
 
-function renderProducts() {
-  const products = getProducts();
+async function renderProducts() {
+  const products = await getProducts();
   const tableBody = document.querySelector('#productTable tbody');
 
-  if (!products.length) {
-    tableBody.innerHTML = '<tr><td colspan="5">Товаров нет</td></tr>';
+  if (!products || !products.length) {
+    tableBody.innerHTML = '<tr><td colspan="6">Товаров нет</td></tr>';
     return;
   }
 
@@ -26,10 +78,11 @@ function renderProducts() {
       <td>${i + 1}</td>
       <td><img src="${p.image}" alt="${p.name}" width="50"></td>
       <td>${p.name}</td>
+      <td>${p.description}</td>
       <td>${p.price} ₽</td>
       <td>
-        <button class="edit-btn" data-id="${p.id}">✏️</button>
-        <button class="delete-btn" data-id="${p.id}">🗑️</button>
+        <button class="edit-btn action-btn" data-id="${p.id}">✏️</button>
+        <button class="delete-btn action-btn" data-id="${p.id}">🗑️</button>
       </td>
     </tr>
   `).join('');
@@ -43,57 +96,142 @@ function renderProducts() {
   );
 }
 
-function addProduct(e) {
+function setupImageUpload() {
+  const fileInput = document.getElementById('imageUpload');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const imageInput = document.getElementById('image');
+  const uploadStatus = document.getElementById('uploadStatus');
+
+  uploadBtn.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      uploadStatus.textContent = 'Ошибка: выберите изображение';
+      uploadStatus.className = 'upload-status error';
+      return;
+    }
+
+    try {
+      uploadStatus.textContent = 'Загрузка...';
+      uploadStatus.className = 'upload-status';
+
+      const result = await uploader.uploadFile(file);
+      
+      if (result.success) {
+        imageInput.value = result.url;
+        uploadStatus.textContent = 'Успешно загружено!';
+        uploadStatus.className = 'upload-status success';
+      } else {
+        uploadStatus.textContent = result.error;
+        uploadStatus.className = 'upload-status error';
+      }
+    } catch (error) {
+      uploadStatus.textContent = 'Ошибка загрузки';
+      uploadStatus.className = 'upload-status error';
+    }
+  });
+}
+
+async function addProduct(e) {
   e.preventDefault();
   const name = document.querySelector('#name').value.trim();
   const price = document.querySelector('#price').value.trim();
+  const description = document.querySelector('#description').value.trim();
   const image = document.querySelector('#image').value.trim();
 
-  if (!name || !price || !image) {
+  if (!name || !price || !description || !image) {
     alert('Заполните все поля!');
     return;
   }
 
-  const products = getProducts();
   const newProduct = {
-    id: Date.now(),
     name,
     price: Number(price),
+    description,
     image
   };
 
-  products.push(newProduct);
-  saveProducts(products);
-  renderProducts();
-  e.target.reset();
+  try {
+    const response = await fetch('/api/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newProduct)
+    });
+
+    if (response.ok) {
+      renderProducts();
+      e.target.reset();
+      const uploadStatus = document.getElementById('uploadStatus');
+      uploadStatus.textContent = '';
+      uploadStatus.className = 'upload-status';
+    } else {
+      alert('Ошибка при добавлении товара');
+    }
+  } catch (error) {
+    alert('Ошибка сети');
+  }
 }
 
-function deleteProduct(id) {
-  let products = getProducts();
-  products = products.filter(p => String(p.id) !== String(id));
-  saveProducts(products);
-  renderProducts();
+async function deleteProduct(id) {
+  if (confirm('Удалить этот товар?')) {
+    const products = await getProducts();
+    const updatedProducts = products.filter(p => String(p.id) !== String(id));
+    
+    try {
+      await fetch('/api/products/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedProducts)
+      });
+      renderProducts();
+    } catch (error) {
+      alert('Ошибка при удалении товара');
+    }
+  }
 }
 
-function editProduct(id) {
-  const products = getProducts();
+async function editProduct(id) {
+  const products = await getProducts();
   const product = products.find(p => String(p.id) === String(id));
 
   if (!product) return;
 
   const name = prompt('Новое название:', product.name);
+  const description = prompt('Новое описание:', product.description);
   const price = prompt('Новая цена:', product.price);
   const image = prompt('Новая ссылка на фото:', product.image);
 
-  if (name && price && image) {
+  if (name && description && price && image) {
     product.name = name;
+    product.description = description;
     product.price = Number(price);
     product.image = image;
-    saveProducts(products);
-    renderProducts();
+    
+    try {
+      await fetch('/api/products/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(products)
+      });
+      renderProducts();
+    } catch (error) {
+      alert('Ошибка при редактировании товара');
+    }
   }
 }
 
 document.querySelector('#productForm').addEventListener('submit', addProduct);
-
+setupImageUpload();
 renderProducts();

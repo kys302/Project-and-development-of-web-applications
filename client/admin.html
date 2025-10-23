@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>Админ-панель</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/x-icon" href="https://iczsblxnxztvzdvfrgul.supabase.co/storage/v1/object/public/masajii/logo.png">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="gradient-bg">
 
@@ -16,7 +18,17 @@
     <form id="productForm">
       <input type="text" id="name" placeholder="Название" required>
       <input type="number" id="price" placeholder="Цена" required>
+      <input type="text" id="description" placeholder="Описание" required>
       <input type="text" id="image" placeholder="Ссылка на изображение" required>
+      
+      <div class="upload-container">
+        <input type="file" id="imageUpload" accept="image/*" class="file-input">
+        <button type="button" id="uploadBtn" class="upload-btn">
+          📁 Загрузить фото
+        </button>
+        <span id="uploadStatus" class="upload-status"></span>
+      </div>
+      
       <button type="submit">Добавить товар</button>
     </form>
     <table id="productTable">
@@ -25,6 +37,7 @@
           <th>#</th>
           <th>Фото</th>
           <th>Название</th>
+          <th>Описание</th>
           <th>Цена</th>
           <th>Действия</th>
         </tr>
@@ -34,7 +47,6 @@
   </main>
 
   <footer>Практическая работа 3 — Козин Артём</footer>
-
-  <script type="module" src="../server/admin.js"></script>
+  <script src="/server/admin.js"></script>
 </body>
 </html>

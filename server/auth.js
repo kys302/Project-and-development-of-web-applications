@@ -1,73 +1,64 @@
-async function loadUsers() {
-  try {
-    const response = await fetch('../data/users.json');
-    const users = await response.json();
-    return users;
-  } catch (error) {
-    console.error('Ошибка загрузки users.json:', error);
-    return [];
-  }
-}
+import { validateForm } from './validation.js';
+import { loginUser, registerUser } from './auth.js';
 
-async function saveUsers(users) {
-  console.log('Данные для сохранения в JSON:', JSON.stringify(users, null, 2));
-  
-  const blob = new Blob([JSON.stringify(users, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'users_updated.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  return true;
-}
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('authForm');
+    const loginInput = document.getElementById('login');
+    const passwordInput = document.getElementById('password');
+    const nameInput = document.getElementById('name');
+    const nameField = document.getElementById('nameField');
+    const switchModeBtn = document.getElementById('switchMode');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    let isLoginMode = true;
 
-export async function registerUser(login, password, name) {
-  const users = await loadUsers();
+    switchModeBtn.addEventListener('click', () => {
+        isLoginMode = !isLoginMode;
+        nameField.style.display = isLoginMode ? 'none' : 'block';
+        submitBtn.textContent = isLoginMode ? 'Войти' : 'Зарегистрироваться';
+        switchModeBtn.textContent = isLoginMode ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Войти';
+    });
 
-  if (users.find(u => u.username === login)) {
-    return { success: false, error: 'Пользователь уже существует' };
-  }
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-  const newUser = {
-    id: users.length ? users[users.length - 1].id + 1 : 1,
-    username: login,
-    password: password,
-    name: name || login,
-    role: users.length === 0 ? 'admin' : 'user'
-  };
+        const { isValid } = validateForm(loginInput.value, passwordInput.value);
+        if (!isValid) {
+            alert('Ошибка валидации! Логин - минимум 3 символа, пароль - минимум 6 символов');
+            return;
+        }
 
-  users.push(newUser);
-  await saveUsers(users);
-  
-  return { success: true };
-}
-
-export async function loginUser(username, password) {
-  const users = await loadUsers();
-  const user = users.find(u => u.username === username && u.password === password);
-
-  if (!user) {
-    return { success: false, error: 'Неверный логин или пароль' };
-  }
-
-  localStorage.setItem('currentUser', JSON.stringify(user));
-  return { success: true, user };
-}
-
-export function downloadUsersJSON() {
-  loadUsers().then(users => {
-    const blob = new Blob([JSON.stringify(users, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'users_backup.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
-}
+        try {
+            if (isLoginMode) {
+                const result = await loginUser(loginInput.value, passwordInput.value);
+                
+                if (result.success) {
+                    alert(`Добро пожаловать, ${result.user.name}!`);
+                    if (result.user.role === 'admin') {
+                        window.location.href = 'admin.html';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
+                } else {
+                    alert(result.error);
+                }
+            } else {
+                const name = nameInput.value.trim();
+                if (!name) {
+                    alert('Введите имя!');
+                    return;
+                }
+                
+                const result = await registerUser(loginInput.value, passwordInput.value, name);
+                if (result.success) {
+                    alert('Регистрация успешна!');
+                    window.location.href = 'index.html';
+                } else {
+                    alert(result.error);
+                }
+            }
+        } catch (error) {
+            alert('Произошла ошибка при обработке запроса');
+        }
+    });
+});

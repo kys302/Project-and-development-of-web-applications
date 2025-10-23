@@ -8,8 +8,8 @@
   },
   {
     "id": 2,
-    "username": "user1",
-    "password": "12345",
+    "username": "user",
+    "password": "123456",
     "name": "Пользователь",
     "role": "user"
   }
